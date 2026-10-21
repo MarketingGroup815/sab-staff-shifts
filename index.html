@@ -15,6 +15,7 @@
         .pdf-mode .bg-[#1a1a1a], .pdf-mode .bg-[#222] { background-color: #f3f4f6 !important; border-color: #d1d5db !important; color: #000 !important; }
         .pdf-mode .text-white, .pdf-mode .text-emerald-400, .pdf-mode .text-[#FFD200] { color: #000000 !important; }
         .pdf-mode input { background-color: transparent !important; border: none !important; color: #000 !important; font-weight: bold; }
+        .pdf-mode .limit-container { display: none !important; }
     </style>
 </head>
 <body class="p-4 md:p-8 font-sans antialiased min-h-screen flex flex-col items-center">
@@ -47,8 +48,8 @@
             <div class="hidden md:grid grid-cols-12 gap-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider px-2">
                 <div class="col-span-2">Day</div>
                 <div class="col-span-2">Turnover (R)</div>
-                <div class="col-span-4 text-center border-l border-gray-800">Front of House (7hr / 11hr)</div>
-                <div class="col-span-4 text-center border-l border-gray-800">Back of House (7hr / 11hr)</div>
+                <div class="col-span-4 text-center border-l border-gray-800">Front of House</div>
+                <div class="col-span-4 text-center border-l border-gray-800">Back of House</div>
             </div>
 
             <!-- Dynamic Weekly Grid -->
@@ -84,42 +85,63 @@
                     <div class="col-span-2 font-bold text-white">${day}</div>
                     <div class="col-span-2 relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">R</span>
-                        <input type="number" data-day="${day}" class="turnover-input w-full bg-[#222] border border-gray-700 rounded py-2 pl-8 pr-2 text-white font-mono input-glow" placeholder="0">
+                        <input type="number" id="turnover-${day}" data-day="${day}" class="trigger-calc w-full bg-[#222] border border-gray-700 rounded py-2 pl-8 pr-2 text-white font-mono input-glow" placeholder="0">
                     </div>
                     
                     <!-- FOH Output -->
-                    <div class="col-span-4 md:border-l border-gray-800 pl-0 md:pl-4 flex justify-between items-center text-sm">
-                        <div class="flex gap-4">
-                            <div class="text-center"><span id="foh-std-${day}" class="font-bold text-[#FFD200] text-lg">0</span><span class="text-xs text-gray-500 ml-1">x7h</span></div>
-                            <div class="text-center"><span id="foh-dbl-${day}" class="font-bold text-[#FFD200] text-lg">0</span><span class="text-xs text-gray-500 ml-1">x11h</span></div>
+                    <div class="col-span-4 md:border-l border-gray-800 pl-0 md:pl-4 flex flex-col justify-center text-sm">
+                        <div class="flex justify-between items-center mb-1">
+                            <div class="limit-container text-[10px] text-gray-500 uppercase flex items-center gap-1">
+                                Max 11h: <input type="number" min="0" max="16" value="16" id="foh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
+                            </div>
+                            <div id="foh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right">R0</div>
                         </div>
-                        <div id="foh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right w-20">R0</div>
+                        <div class="bg-[#222] rounded py-2 flex flex-col items-center justify-center border border-gray-800">
+                            <div class="text-[#FFD200] font-bold text-2xl leading-none" id="foh-slots-${day}">0</div>
+                            <div class="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Total Shift Slots</div>
+                            <div class="text-[10px] text-gray-500 mt-1 font-mono" id="foh-breakdown-${day}">(0 x 7h  |  0 x 11h)</div>
+                        </div>
                     </div>
 
                     <!-- BOH Output -->
-                    <div class="col-span-4 md:border-l border-gray-800 pl-0 md:pl-4 flex justify-between items-center text-sm">
-                        <div class="flex gap-4">
-                            <div class="text-center"><span id="boh-std-${day}" class="font-bold text-[#FFD200] text-lg">0</span><span class="text-xs text-gray-500 ml-1">x7h</span></div>
-                            <div class="text-center"><span id="boh-dbl-${day}" class="font-bold text-[#FFD200] text-lg">0</span><span class="text-xs text-gray-500 ml-1">x11h</span></div>
+                    <div class="col-span-4 md:border-l border-gray-800 pl-0 md:pl-4 flex flex-col justify-center text-sm">
+                        <div class="flex justify-between items-center mb-1">
+                            <div class="limit-container text-[10px] text-gray-500 uppercase flex items-center gap-1">
+                                Max 11h: <input type="number" min="0" max="16" value="16" id="boh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
+                            </div>
+                            <div id="boh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right">R0</div>
                         </div>
-                        <div id="boh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right w-20">R0</div>
+                        <div class="bg-[#222] rounded py-2 flex flex-col items-center justify-center border border-gray-800">
+                            <div class="text-[#FFD200] font-bold text-2xl leading-none" id="boh-slots-${day}">0</div>
+                            <div class="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Total Shift Slots</div>
+                            <div class="text-[10px] text-gray-500 mt-1 font-mono" id="boh-breakdown-${day}">(0 x 7h  |  0 x 11h)</div>
+                        </div>
                     </div>
                 `;
                 grid.appendChild(row);
             });
         }
 
-        function optimizeShifts(targetHours) {
+        function optimizeShifts(targetHours, maxDoubleAllowed) {
             let bestDiff = Infinity, bestS = 0, bestD = 0;
             for (let bodies = 1; bodies <= CONSTANTS.maxStaff; bodies++) {
-                for (let d = 0; d <= bodies; d++) {
+                let currentMaxDouble = Math.min(bodies, maxDoubleAllowed);
+                for (let d = 0; d <= currentMaxDouble; d++) {
                     let s = bodies - d;
                     let hours = (s * CONSTANTS.stdShift) + (d * CONSTANTS.dblShift);
                     let diff = hours - targetHours;
-                    if (diff >= 0 && diff < bestDiff) { bestDiff = diff; bestS = s; bestD = d; }
+                    
+                    if (diff >= 0 && diff < bestDiff) { 
+                        bestDiff = diff; 
+                        bestS = s; 
+                        bestD = d; 
+                    }
                 }
             }
-            if (bestDiff === Infinity) { bestS = 0; bestD = CONSTANTS.maxStaff; }
+            if (bestDiff === Infinity) { 
+                bestS = CONSTANTS.maxStaff - Math.min(CONSTANTS.maxStaff, maxDoubleAllowed); 
+                bestD = Math.min(CONSTANTS.maxStaff, maxDoubleAllowed); 
+            }
             return { standard: bestS, double: bestD, totalHours: (bestS * CONSTANTS.stdShift) + (bestD * CONSTANTS.dblShift) };
         }
 
@@ -127,9 +149,9 @@
             let totalTurnover = 0;
             let totalSpend = 0;
 
-            document.querySelectorAll('.turnover-input').forEach(input => {
-                const val = parseFloat(input.value) || 0;
-                totalTurnover += val;
+            daysOfWeek.forEach(day => {
+                const turnoverInput = document.getElementById(`turnover-${day}`);
+                if(turnoverInput) totalTurnover += (parseFloat(turnoverInput.value) || 0);
             });
 
             if (totalTurnover > 0) {
@@ -141,49 +163,57 @@
             }
         }
 
-        // Event Delegation for dynamic inputs
-        grid.addEventListener('input', (e) => {
-            if (e.target.classList.contains('turnover-input')) {
-                const day = e.target.getAttribute('data-day');
-                const turnover = parseFloat(e.target.value) || 0;
+        function processRow(day) {
+            const turnover = parseFloat(document.getElementById(`turnover-${day}`).value) || 0;
+            
+            const fohLimit = parseInt(document.getElementById(`foh-limit-${day}`).value);
+            const bohLimit = parseInt(document.getElementById(`boh-limit-${day}`).value);
+            const maxFohDbl = isNaN(fohLimit) ? CONSTANTS.maxStaff : fohLimit;
+            const maxBohDbl = isNaN(bohLimit) ? CONSTANTS.maxStaff : bohLimit;
 
-                if (turnover < 1000) {
-                    document.getElementById(`foh-std-${day}`).textContent = 0;
-                    document.getElementById(`foh-dbl-${day}`).textContent = 0;
-                    document.getElementById(`boh-std-${day}`).textContent = 0;
-                    document.getElementById(`boh-dbl-${day}`).textContent = 0;
-                    document.getElementById(`foh-bgt-${day}`).textContent = "R0";
-                    document.getElementById(`boh-bgt-${day}`).textContent = "R0";
-                    calculateTotals();
-                    return;
-                }
+            if (turnover < 1000) {
+                document.getElementById(`foh-slots-${day}`).textContent = "0";
+                document.getElementById(`foh-breakdown-${day}`).textContent = "(0 x 7h | 0 x 11h)";
+                document.getElementById(`foh-bgt-${day}`).textContent = "R0";
 
+                document.getElementById(`boh-slots-${day}`).textContent = "0";
+                document.getElementById(`boh-breakdown-${day}`).textContent = "(0 x 7h | 0 x 11h)";
+                document.getElementById(`boh-bgt-${day}`).textContent = "R0";
+            } else {
                 const totalBudget = turnover * CONSTANTS.wagePercentageCap;
                 const fohBudget = totalBudget * CONSTANTS.fohSplit;
                 const bohBudget = totalBudget * CONSTANTS.bohSplit;
 
-                const fohRoster = optimizeShifts(fohBudget / CONSTANTS.hourlyRate);
-                const bohRoster = optimizeShifts(bohBudget / CONSTANTS.hourlyRate);
+                const fohRoster = optimizeShifts(fohBudget / CONSTANTS.hourlyRate, maxFohDbl);
+                const bohRoster = optimizeShifts(bohBudget / CONSTANTS.hourlyRate, maxBohDbl);
 
-                document.getElementById(`foh-std-${day}`).textContent = fohRoster.standard;
-                document.getElementById(`foh-dbl-${day}`).textContent = fohRoster.double;
+                // Calculate Total Shift Slots (Standard = 1 slot, Double = 2 slots)
+                const fohSlots = fohRoster.standard + (fohRoster.double * 2);
+                const bohSlots = bohRoster.standard + (bohRoster.double * 2);
+
+                document.getElementById(`foh-slots-${day}`).textContent = fohSlots;
+                document.getElementById(`foh-breakdown-${day}`).textContent = `(${fohRoster.standard} x 7h  |  ${fohRoster.double} x 11h)`;
                 document.getElementById(`foh-bgt-${day}`).textContent = `R${Math.round(fohBudget)}`;
 
-                document.getElementById(`boh-std-${day}`).textContent = bohRoster.standard;
-                document.getElementById(`boh-dbl-${day}`).textContent = bohRoster.double;
+                document.getElementById(`boh-slots-${day}`).textContent = bohSlots;
+                document.getElementById(`boh-breakdown-${day}`).textContent = `(${bohRoster.standard} x 7h  |  ${bohRoster.double} x 11h)`;
                 document.getElementById(`boh-bgt-${day}`).textContent = `R${Math.round(bohBudget)}`;
+            }
+            calculateTotals();
+        }
 
-                calculateTotals();
+        grid.addEventListener('input', (e) => {
+            if (e.target.classList.contains('trigger-calc')) {
+                const day = e.target.getAttribute('data-day');
+                processRow(day);
             }
         });
 
-        // PDF Generation Logic
         function downloadPDF() {
             const element = document.getElementById('export-container');
             const dateFrom = document.getElementById('dateFrom').value || 'Unknown';
             const dateTo = document.getElementById('dateTo').value || 'Unknown';
             
-            // Temporarily apply print styles
             element.classList.add('pdf-mode');
 
             const opt = {
@@ -195,7 +225,6 @@
             };
 
             html2pdf().set(opt).from(element).save().then(() => {
-                // Remove print styles after generation
                 element.classList.remove('pdf-mode');
             });
         }
