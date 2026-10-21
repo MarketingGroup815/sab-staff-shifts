@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Weekly Roster Optimizer</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Replaced html2pdf with direct jsPDF document generators -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;Spur Roster&quot;,&quot;short_name&quot;:&quot;Roster&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;#050505&quot;,&quot;theme_color&quot;:&quot;#050505&quot;}">
@@ -15,6 +14,9 @@
     </style>
 </head>
 <body class="p-4 md:p-8 font-sans antialiased min-h-screen flex flex-col items-center">
+
+    <!-- Hidden Logo Asset for PDF Generation -->
+    <img id="pdfLogo" src="logo.png" alt="Logo" style="display: none;" crossorigin="anonymous">
 
     <div class="w-full max-w-5xl">
         <!-- Controls -->
@@ -217,7 +219,7 @@
             }
         });
 
-        // Completely rewritten Vector PDF Generator
+        // Professional Document Generator
         function downloadPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "A4" });
@@ -225,44 +227,65 @@
             const dateFrom = document.getElementById('dateFrom').value || '____-___-__';
             const dateTo = document.getElementById('dateTo').value || '____-___-__';
 
-            // Document Headers
-            doc.setFontSize(20);
+            // --- LOGO INSERTION (Dynamically pulled from DOM) ---
+            const logoEl = document.getElementById('pdfLogo');
+            // Verify the image file exists and is loaded before trying to stamp it
+            if (logoEl && logoEl.complete && logoEl.naturalWidth !== 0) {
+                doc.addImage(logoEl, 'PNG', 380, 40, 160, 40);
+            }
+
+            // --- DOCUMENT HEADERS ---
+            doc.setFontSize(22);
             doc.setFont("helvetica", "bold");
-            doc.text("Sabino Canyon Spur", 40, 50);
+            doc.text("Sabino Canyon Spur", 40, 60);
 
-            doc.setFontSize(16);
+            doc.setFontSize(14);
             doc.setFont("helvetica", "normal");
-            doc.text("SAB Shift Predictions", 40, 75);
-            doc.text(`${dateFrom} to ${dateTo}`, 40, 95);
+            doc.setTextColor(100, 100, 100);
+            doc.text("SAB Shift Predictions", 40, 80);
+            doc.text(`${dateFrom} to ${dateTo}`, 40, 98);
 
-            // Extract Data from DOM
+            // --- ASSEMBLE GRID DATA ---
             const tableData = [];
             daysOfWeek.forEach(day => {
                 const turnover = document.getElementById(`turnover-${day}`).value || "0";
                 
-                // Format FOH Cell
+                // Extract FOH figures safely using Regex
                 const fohStaff = document.getElementById(`foh-staff-${day}`).textContent;
-                const fohBreakdown = document.getElementById(`foh-breakdown-${day}`).textContent.replace(/[()]/g, '');
-                const fohCell = `${fohStaff} Staff\n${fohBreakdown}`;
+                const fohBreakdown = document.getElementById(`foh-breakdown-${day}`).textContent;
+                const foh7Match = fohBreakdown.match(/(\d+)\s*x\s*7h/);
+                const foh11Match = fohBreakdown.match(/(\d+)\s*x\s*11h/);
+                const foh7 = foh7Match ? foh7Match[1] : "0";
+                const foh11 = foh11Match ? foh11Match[1] : "0";
 
-                // Format BOH Cell
+                // Extract BOH figures safely using Regex
                 const bohStaff = document.getElementById(`boh-staff-${day}`).textContent;
-                const bohBreakdown = document.getElementById(`boh-breakdown-${day}`).textContent.replace(/[()]/g, '');
-                const bohCell = `${bohStaff} Staff\n${bohBreakdown}`;
+                const bohBreakdown = document.getElementById(`boh-breakdown-${day}`).textContent;
+                const boh7Match = bohBreakdown.match(/(\d+)\s*x\s*7h/);
+                const boh11Match = bohBreakdown.match(/(\d+)\s*x\s*11h/);
+                const boh7 = boh7Match ? boh7Match[1] : "0";
+                const boh11 = boh11Match ? boh11Match[1] : "0";
 
-                tableData.push([ day, `R ${turnover}`, fohCell, bohCell ]);
+                tableData.push([ day, `R ${turnover}`, fohStaff, foh7, foh11, bohStaff, boh7, boh11 ]);
             });
 
-            // Render Table Structure
+            // --- RENDER MAIN TABLE ---
             doc.autoTable({
-                startY: 120,
-                head: [['Day', 'Projected Turnover', 'Front of House', 'Back of House']],
+                startY: 130,
+                head: [
+                    [
+                        { content: 'Day', rowSpan: 2, styles: { valign: 'middle' } }, 
+                        { content: 'Projected Turnover', rowSpan: 2, styles: { valign: 'middle' } }, 
+                        { content: 'Front of House', colSpan: 3, styles: { halign: 'center' } }, 
+                        { content: 'Back of House', colSpan: 3, styles: { halign: 'center' } }
+                    ],
+                    ['Total Staff', '7h', '11h', 'Total Staff', '7h', '11h']
+                ],
                 body: tableData,
                 theme: 'grid',
                 styles: { 
-                    fontSize: 14, 
-                    cellPadding: 10, 
-                    valign: 'middle',
+                    fontSize: 11, 
+                    cellPadding: 8, 
                     textColor: [0, 0, 0] 
                 },
                 headStyles: { 
@@ -273,19 +296,42 @@
                 columnStyles: {
                     0: { fontStyle: 'bold' },
                     2: { halign: 'center' },
-                    3: { halign: 'center' }
+                    3: { halign: 'center' },
+                    4: { halign: 'center' },
+                    5: { halign: 'center' },
+                    6: { halign: 'center' },
+                    7: { halign: 'center' }
                 }
             });
 
-            // Extract & Clean Weekly Summary text for bottom of page
-            const summaryRaw = document.getElementById('weeklySummary').innerText;
-            const summaryClean = summaryRaw.replace(/\s+/g, ' ').trim();
-            
-            const finalY = doc.lastAutoTable.finalY || 120;
-            
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text(summaryClean, 40, finalY + 30);
+            // --- RENDER EXECUTIVE SUMMARY ---
+            let totalTurnover = 0;
+            let actualHours = 0;
+            daysOfWeek.forEach(day => {
+                totalTurnover += parseFloat(document.getElementById(`turnover-${day}`).value) || 0;
+                actualHours += parseFloat(document.getElementById(`foh-staff-${day}`).getAttribute('data-hours')) || 0;
+                actualHours += parseFloat(document.getElementById(`boh-staff-${day}`).getAttribute('data-hours')) || 0;
+            });
+
+            const actualSpend = actualHours * CONSTANTS.hourlyRate;
+            const ratio = totalTurnover > 0 ? ((actualSpend / totalTurnover) * 100).toFixed(2) : "0.00";
+            const isOverBudget = parseFloat(ratio) > 10.00;
+
+            const finalY = doc.lastAutoTable.finalY + 30;
+
+            doc.autoTable({
+                startY: finalY,
+                head: [['Total Projected Turnover', 'Total Actual Wage Spend', 'Actual Wage/Turnover Ratio']],
+                body: [[`R ${totalTurnover.toFixed(2)}`, `R ${actualSpend.toFixed(2)}`, `${ratio}%`]],
+                theme: 'grid',
+                headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+                bodyStyles: { fontSize: 13, fontStyle: 'bold', halign: 'center', cellPadding: 12 },
+                didParseCell: function(data) {
+                    if (data.section === 'body' && data.column.index === 2) {
+                        data.cell.styles.textColor = isOverBudget ? [220, 38, 38] : [16, 185, 129];
+                    }
+                }
+            });
 
             doc.save(`Spur_Roster_${dateFrom}_to_${dateTo}.pdf`);
         }
