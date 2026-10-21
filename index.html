@@ -56,8 +56,10 @@
             <div id="weeklyGrid" class="space-y-4 md:space-y-2"></div>
 
             <!-- Weekly Totals -->
-            <div class="mt-6 pt-4 border-t border-gray-800 text-right">
-                <div id="weeklySummary" class="text-sm font-mono text-gray-400">Total Projected Wage Spend: R0.00 | Aggregate Ratio: 0.00%</div>
+            <div class="mt-6 pt-4 border-t border-gray-800 text-center md:text-right">
+                <div id="weeklySummary" class="text-sm font-mono text-gray-400 tracking-tight">
+                    Total Turnover: <span class="text-white">R0.00</span> &nbsp;|&nbsp; Actual Wage Spend: <span class="text-white">R0.00</span> &nbsp;|&nbsp; Actual Ratio: <span class="text-emerald-400">0.00%</span>
+                </div>
             </div>
         </div>
     </div>
@@ -93,12 +95,12 @@
                     <div class="col-span-4 md:border-l border-gray-800 pl-0 md:pl-4 flex flex-col justify-center text-sm">
                         <div class="flex justify-between items-center mb-1">
                             <div class="limit-container text-[10px] text-gray-500 uppercase flex items-center gap-1">
-                                Max 11h: <input type="number" min="0" max="${CONSTANTS.maxFohStaff}" value="0" id="foh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
+                                11h Shifts: <input type="number" min="0" max="${CONSTANTS.maxFohStaff}" value="0" id="foh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
                             </div>
                             <div id="foh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right">R0</div>
                         </div>
                         <div class="bg-[#222] rounded py-2 flex flex-col items-center justify-center border border-gray-800">
-                            <div class="text-[#FFD200] font-bold text-2xl leading-none" id="foh-slots-${day}">0</div>
+                            <div class="text-[#FFD200] font-bold text-2xl leading-none" id="foh-slots-${day}" data-hours="0">0</div>
                             <div class="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Total Shift Slots</div>
                             <div class="text-[10px] text-gray-500 mt-1 font-mono" id="foh-breakdown-${day}">(0 x 7h  |  0 x 11h)</div>
                         </div>
@@ -108,12 +110,12 @@
                     <div class="col-span-4 md:border-l border-gray-800 pl-0 md:pl-4 flex flex-col justify-center text-sm">
                         <div class="flex justify-between items-center mb-1">
                             <div class="limit-container text-[10px] text-gray-500 uppercase flex items-center gap-1">
-                                Max 11h: <input type="number" min="0" max="${CONSTANTS.maxBohStaff}" value="0" id="boh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
+                                11h Shifts: <input type="number" min="0" max="${CONSTANTS.maxBohStaff}" value="0" id="boh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
                             </div>
                             <div id="boh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right">R0</div>
                         </div>
                         <div class="bg-[#222] rounded py-2 flex flex-col items-center justify-center border border-gray-800">
-                            <div class="text-[#FFD200] font-bold text-2xl leading-none" id="boh-slots-${day}">0</div>
+                            <div class="text-[#FFD200] font-bold text-2xl leading-none" id="boh-slots-${day}" data-hours="0">0</div>
                             <div class="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Total Shift Slots</div>
                             <div class="text-[10px] text-gray-500 mt-1 font-mono" id="boh-breakdown-${day}">(0 x 7h  |  0 x 11h)</div>
                         </div>
@@ -123,62 +125,77 @@
             });
         }
 
-        // Updated optimizer receives dynamic department limits
-        function optimizeShifts(targetHours, maxDoubleAllowed, departmentStaffMax) {
-            let bestDiff = Infinity, bestS = 0, bestD = 0;
-            for (let bodies = 1; bodies <= departmentStaffMax; bodies++) {
-                let currentMaxDouble = Math.min(bodies, maxDoubleAllowed);
-                for (let d = 0; d <= currentMaxDouble; d++) {
-                    let s = bodies - d;
-                    let hours = (s * CONSTANTS.stdShift) + (d * CONSTANTS.dblShift);
-                    let diff = hours - targetHours;
-                    
-                    if (diff >= 0 && diff < bestDiff) { 
-                        bestDiff = diff; 
-                        bestS = s; 
-                        bestD = d; 
-                    }
+        // Updated explicitly configured exact double shift optimizer
+        function optimizeShiftsExact(targetHours, exactDouble, departmentStaffMax) {
+            let d = Math.min(Math.max(0, exactDouble), departmentStaffMax);
+            let bestDiff = Infinity, bestS = 0;
+            let maxS = departmentStaffMax - d;
+
+            for (let s = 0; s <= maxS; s++) {
+                let hours = (s * CONSTANTS.stdShift) + (d * CONSTANTS.dblShift);
+                let diff = hours - targetHours;
+                
+                // Bias toward tightest operational fulfillment without severely overloading budget
+                if (diff >= 0 && diff < bestDiff) { 
+                    bestDiff = diff; 
+                    bestS = s; 
                 }
             }
+            
             if (bestDiff === Infinity) { 
-                bestS = departmentStaffMax - Math.min(departmentStaffMax, maxDoubleAllowed); 
-                bestD = Math.min(departmentStaffMax, maxDoubleAllowed); 
+                bestS = maxS; 
             }
-            return { standard: bestS, double: bestD, totalHours: (bestS * CONSTANTS.stdShift) + (bestD * CONSTANTS.dblShift) };
+            
+            return { standard: bestS, double: d, totalHours: (bestS * CONSTANTS.stdShift) + (d * CONSTANTS.dblShift) };
         }
 
+        // Calculates actual operational spend rather than theoretical percentages
         function calculateTotals() {
             let totalTurnover = 0;
-            let totalSpend = 0;
+            let actualHours = 0;
 
             daysOfWeek.forEach(day => {
                 const turnoverInput = document.getElementById(`turnover-${day}`);
                 if(turnoverInput) totalTurnover += (parseFloat(turnoverInput.value) || 0);
+
+                const fohHours = parseFloat(document.getElementById(`foh-slots-${day}`).getAttribute('data-hours')) || 0;
+                const bohHours = parseFloat(document.getElementById(`boh-slots-${day}`).getAttribute('data-hours')) || 0;
+                actualHours += (fohHours + bohHours);
             });
 
             if (totalTurnover > 0) {
-                totalSpend = totalTurnover * CONSTANTS.wagePercentageCap;
-                const ratio = ((totalSpend / totalTurnover) * 100).toFixed(2);
-                document.getElementById('weeklySummary').textContent = `Total Projected Wage Spend: R${totalSpend.toFixed(2)} | Aggregate Ratio: ${ratio}%`;
+                const actualSpend = actualHours * CONSTANTS.hourlyRate;
+                const ratio = ((actualSpend / totalTurnover) * 100).toFixed(2);
+                
+                // Visual compliance logic
+                const ratioColor = ratio > 10.00 ? 'text-red-500' : 'text-emerald-400';
+                
+                document.getElementById('weeklySummary').innerHTML = 
+                    `Total Turnover: <span class="text-white">R${totalTurnover.toFixed(2)}</span> &nbsp;|&nbsp; 
+                     Actual Wage Spend: <span class="text-white">R${actualSpend.toFixed(2)}</span> &nbsp;|&nbsp; 
+                     Actual Ratio: <span class="${ratioColor} font-bold">${ratio}%</span>`;
             } else {
-                document.getElementById('weeklySummary').textContent = `Total Projected Wage Spend: R0.00 | Aggregate Ratio: 0.00%`;
+                document.getElementById('weeklySummary').innerHTML = 
+                    `Total Turnover: <span class="text-white">R0.00</span> &nbsp;|&nbsp; 
+                     Actual Wage Spend: <span class="text-white">R0.00</span> &nbsp;|&nbsp; 
+                     Actual Ratio: <span class="text-emerald-400">0.00%</span>`;
             }
         }
 
         function processRow(day) {
             const turnover = parseFloat(document.getElementById(`turnover-${day}`).value) || 0;
             
-            const fohLimit = parseInt(document.getElementById(`foh-limit-${day}`).value);
-            const bohLimit = parseInt(document.getElementById(`boh-limit-${day}`).value);
-            const maxFohDbl = isNaN(fohLimit) ? 0 : fohLimit; // Fallback matches default 0
-            const maxBohDbl = isNaN(bohLimit) ? 0 : bohLimit; // Fallback matches default 0
+            const fohExactDbl = parseInt(document.getElementById(`foh-limit-${day}`).value) || 0;
+            const bohExactDbl = parseInt(document.getElementById(`boh-limit-${day}`).value) || 0;
 
             if (turnover < 1000) {
                 document.getElementById(`foh-slots-${day}`).textContent = "0";
+                document.getElementById(`foh-slots-${day}`).setAttribute('data-hours', "0");
                 document.getElementById(`foh-breakdown-${day}`).textContent = "(0 x 7h | 0 x 11h)";
                 document.getElementById(`foh-bgt-${day}`).textContent = "R0";
 
                 document.getElementById(`boh-slots-${day}`).textContent = "0";
+                document.getElementById(`boh-slots-${day}`).setAttribute('data-hours', "0");
                 document.getElementById(`boh-breakdown-${day}`).textContent = "(0 x 7h | 0 x 11h)";
                 document.getElementById(`boh-bgt-${day}`).textContent = "R0";
             } else {
@@ -186,17 +203,21 @@
                 const fohBudget = totalBudget * CONSTANTS.fohSplit;
                 const bohBudget = totalBudget * CONSTANTS.bohSplit;
 
-                const fohRoster = optimizeShifts(fohBudget / CONSTANTS.hourlyRate, maxFohDbl, CONSTANTS.maxFohStaff);
-                const bohRoster = optimizeShifts(bohBudget / CONSTANTS.hourlyRate, maxBohDbl, CONSTANTS.maxBohStaff);
+                const fohRoster = optimizeShiftsExact(fohBudget / CONSTANTS.hourlyRate, fohExactDbl, CONSTANTS.maxFohStaff);
+                const bohRoster = optimizeShiftsExact(bohBudget / CONSTANTS.hourlyRate, bohExactDbl, CONSTANTS.maxBohStaff);
 
                 const fohSlots = fohRoster.standard + (fohRoster.double * 2);
                 const bohSlots = bohRoster.standard + (bohRoster.double * 2);
 
-                document.getElementById(`foh-slots-${day}`).textContent = fohSlots;
+                const fohEl = document.getElementById(`foh-slots-${day}`);
+                fohEl.textContent = fohSlots;
+                fohEl.setAttribute('data-hours', fohRoster.totalHours);
                 document.getElementById(`foh-breakdown-${day}`).textContent = `(${fohRoster.standard} x 7h  |  ${fohRoster.double} x 11h)`;
                 document.getElementById(`foh-bgt-${day}`).textContent = `R${Math.round(fohBudget)}`;
 
-                document.getElementById(`boh-slots-${day}`).textContent = bohSlots;
+                const bohEl = document.getElementById(`boh-slots-${day}`);
+                bohEl.textContent = bohSlots;
+                bohEl.setAttribute('data-hours', bohRoster.totalHours);
                 document.getElementById(`boh-breakdown-${day}`).textContent = `(${bohRoster.standard} x 7h  |  ${bohRoster.double} x 11h)`;
                 document.getElementById(`boh-bgt-${day}`).textContent = `R${Math.round(bohBudget)}`;
             }
