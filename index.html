@@ -100,9 +100,9 @@
                             <div id="foh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right">R0</div>
                         </div>
                         <div class="bg-[#222] rounded py-2 flex flex-col items-center justify-center border border-gray-800">
-                            <div class="text-[#FFD200] font-bold text-2xl leading-none" id="foh-slots-${day}" data-hours="0">0</div>
-                            <div class="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Total Shift Slots</div>
-                            <div class="text-[10px] text-gray-500 mt-1 font-mono" id="foh-breakdown-${day}">(0 x 7h  |  0 x 11h)</div>
+                            <div class="text-[#FFD200] font-bold text-xl leading-none" id="foh-staff-${day}" data-hours="0">0</div>
+                            <div class="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Total Staff</div>
+                            <div class="text-sm text-gray-300 mt-1 font-mono font-semibold" id="foh-breakdown-${day}">(0 x 7h  |  0 x 11h)</div>
                         </div>
                     </div>
 
@@ -115,9 +115,9 @@
                             <div id="boh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right">R0</div>
                         </div>
                         <div class="bg-[#222] rounded py-2 flex flex-col items-center justify-center border border-gray-800">
-                            <div class="text-[#FFD200] font-bold text-2xl leading-none" id="boh-slots-${day}" data-hours="0">0</div>
-                            <div class="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Total Shift Slots</div>
-                            <div class="text-[10px] text-gray-500 mt-1 font-mono" id="boh-breakdown-${day}">(0 x 7h  |  0 x 11h)</div>
+                            <div class="text-[#FFD200] font-bold text-xl leading-none" id="boh-staff-${day}" data-hours="0">0</div>
+                            <div class="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Total Staff</div>
+                            <div class="text-sm text-gray-300 mt-1 font-mono font-semibold" id="boh-breakdown-${day}">(0 x 7h  |  0 x 11h)</div>
                         </div>
                     </div>
                 `;
@@ -158,8 +158,8 @@
                 const turnoverInput = document.getElementById(`turnover-${day}`);
                 if(turnoverInput) totalTurnover += (parseFloat(turnoverInput.value) || 0);
 
-                const fohHours = parseFloat(document.getElementById(`foh-slots-${day}`).getAttribute('data-hours')) || 0;
-                const bohHours = parseFloat(document.getElementById(`boh-slots-${day}`).getAttribute('data-hours')) || 0;
+                const fohHours = parseFloat(document.getElementById(`foh-staff-${day}`).getAttribute('data-hours')) || 0;
+                const bohHours = parseFloat(document.getElementById(`boh-staff-${day}`).getAttribute('data-hours')) || 0;
                 actualHours += (fohHours + bohHours);
             });
 
@@ -189,13 +189,13 @@
             const bohExactDbl = parseInt(document.getElementById(`boh-limit-${day}`).value) || 0;
 
             if (turnover < 1000) {
-                document.getElementById(`foh-slots-${day}`).textContent = "0";
-                document.getElementById(`foh-slots-${day}`).setAttribute('data-hours', "0");
+                document.getElementById(`foh-staff-${day}`).textContent = "0";
+                document.getElementById(`foh-staff-${day}`).setAttribute('data-hours', "0");
                 document.getElementById(`foh-breakdown-${day}`).textContent = "(0 x 7h | 0 x 11h)";
                 document.getElementById(`foh-bgt-${day}`).textContent = "R0";
 
-                document.getElementById(`boh-slots-${day}`).textContent = "0";
-                document.getElementById(`boh-slots-${day}`).setAttribute('data-hours', "0");
+                document.getElementById(`boh-staff-${day}`).textContent = "0";
+                document.getElementById(`boh-staff-${day}`).setAttribute('data-hours', "0");
                 document.getElementById(`boh-breakdown-${day}`).textContent = "(0 x 7h | 0 x 11h)";
                 document.getElementById(`boh-bgt-${day}`).textContent = "R0";
             } else {
@@ -206,17 +206,17 @@
                 const fohRoster = optimizeShiftsExact(fohBudget / CONSTANTS.hourlyRate, fohExactDbl, CONSTANTS.maxFohStaff);
                 const bohRoster = optimizeShiftsExact(bohBudget / CONSTANTS.hourlyRate, bohExactDbl, CONSTANTS.maxBohStaff);
 
-                const fohSlots = fohRoster.standard + (fohRoster.double * 2);
-                const bohSlots = bohRoster.standard + (bohRoster.double * 2);
+                const fohStaff = fohRoster.standard + fohRoster.double;
+                const bohStaff = bohRoster.standard + bohRoster.double;
 
-                const fohEl = document.getElementById(`foh-slots-${day}`);
-                fohEl.textContent = fohSlots;
+                const fohEl = document.getElementById(`foh-staff-${day}`);
+                fohEl.textContent = fohStaff;
                 fohEl.setAttribute('data-hours', fohRoster.totalHours);
                 document.getElementById(`foh-breakdown-${day}`).textContent = `(${fohRoster.standard} x 7h  |  ${fohRoster.double} x 11h)`;
                 document.getElementById(`foh-bgt-${day}`).textContent = `R${Math.round(fohBudget)}`;
 
-                const bohEl = document.getElementById(`boh-slots-${day}`);
-                bohEl.textContent = bohSlots;
+                const bohEl = document.getElementById(`boh-staff-${day}`);
+                bohEl.textContent = bohStaff;
                 bohEl.setAttribute('data-hours', bohRoster.totalHours);
                 document.getElementById(`boh-breakdown-${day}`).textContent = `(${bohRoster.standard} x 7h  |  ${bohRoster.double} x 11h)`;
                 document.getElementById(`boh-bgt-${day}`).textContent = `R${Math.round(bohBudget)}`;
