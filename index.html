@@ -229,7 +229,6 @@
 
             // --- LOGO INSERTION (Dynamically pulled from DOM) ---
             const logoEl = document.getElementById('pdfLogo');
-            // Verify the image file exists and is loaded before trying to stamp it
             if (logoEl && logoEl.complete && logoEl.naturalWidth !== 0) {
                 doc.addImage(logoEl, 'PNG', 380, 40, 160, 40);
             }
@@ -250,7 +249,6 @@
             daysOfWeek.forEach(day => {
                 const turnover = document.getElementById(`turnover-${day}`).value || "0";
                 
-                // Extract FOH figures safely using Regex
                 const fohStaff = document.getElementById(`foh-staff-${day}`).textContent;
                 const fohBreakdown = document.getElementById(`foh-breakdown-${day}`).textContent;
                 const foh7Match = fohBreakdown.match(/(\d+)\s*x\s*7h/);
@@ -258,7 +256,6 @@
                 const foh7 = foh7Match ? foh7Match[1] : "0";
                 const foh11 = foh11Match ? foh11Match[1] : "0";
 
-                // Extract BOH figures safely using Regex
                 const bohStaff = document.getElementById(`boh-staff-${day}`).textContent;
                 const bohBreakdown = document.getElementById(`boh-breakdown-${day}`).textContent;
                 const boh7Match = bohBreakdown.match(/(\d+)\s*x\s*7h/);
@@ -301,6 +298,14 @@
                     5: { halign: 'center' },
                     6: { halign: 'center' },
                     7: { halign: 'center' }
+                },
+                didDrawCell: function(data) {
+                    // Inject thick vertical separation lines for FOH and BOH sections
+                    if (data.column.index === 2 || data.column.index === 5) {
+                        doc.setDrawColor(0, 0, 0); // Solid black stroke
+                        doc.setLineWidth(1.5);
+                        doc.line(data.cell.x, data.cell.y, data.cell.x, data.cell.y + data.cell.height);
+                    }
                 }
             });
 
