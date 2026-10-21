@@ -65,12 +65,13 @@
     <script>
         const CONSTANTS = {
             wagePercentageCap: 0.10,
-            fohSplit: 0.55,
-            bohSplit: 0.45,
+            fohSplit: 0.52,
+            bohSplit: 0.48,
             hourlyRate: 30.23,
             stdShift: 7,
             dblShift: 11,
-            maxStaff: 16
+            maxFohStaff: 17,
+            maxBohStaff: 16
         };
 
         const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -92,7 +93,7 @@
                     <div class="col-span-4 md:border-l border-gray-800 pl-0 md:pl-4 flex flex-col justify-center text-sm">
                         <div class="flex justify-between items-center mb-1">
                             <div class="limit-container text-[10px] text-gray-500 uppercase flex items-center gap-1">
-                                Max 11h: <input type="number" min="0" max="16" value="16" id="foh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
+                                Max 11h: <input type="number" min="0" max="${CONSTANTS.maxFohStaff}" value="${CONSTANTS.maxFohStaff}" id="foh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
                             </div>
                             <div id="foh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right">R0</div>
                         </div>
@@ -107,7 +108,7 @@
                     <div class="col-span-4 md:border-l border-gray-800 pl-0 md:pl-4 flex flex-col justify-center text-sm">
                         <div class="flex justify-between items-center mb-1">
                             <div class="limit-container text-[10px] text-gray-500 uppercase flex items-center gap-1">
-                                Max 11h: <input type="number" min="0" max="16" value="16" id="boh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
+                                Max 11h: <input type="number" min="0" max="${CONSTANTS.maxBohStaff}" value="${CONSTANTS.maxBohStaff}" id="boh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
                             </div>
                             <div id="boh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right">R0</div>
                         </div>
@@ -122,9 +123,10 @@
             });
         }
 
-        function optimizeShifts(targetHours, maxDoubleAllowed) {
+        // Updated optimizer receives dynamic department limits
+        function optimizeShifts(targetHours, maxDoubleAllowed, departmentStaffMax) {
             let bestDiff = Infinity, bestS = 0, bestD = 0;
-            for (let bodies = 1; bodies <= CONSTANTS.maxStaff; bodies++) {
+            for (let bodies = 1; bodies <= departmentStaffMax; bodies++) {
                 let currentMaxDouble = Math.min(bodies, maxDoubleAllowed);
                 for (let d = 0; d <= currentMaxDouble; d++) {
                     let s = bodies - d;
@@ -139,8 +141,8 @@
                 }
             }
             if (bestDiff === Infinity) { 
-                bestS = CONSTANTS.maxStaff - Math.min(CONSTANTS.maxStaff, maxDoubleAllowed); 
-                bestD = Math.min(CONSTANTS.maxStaff, maxDoubleAllowed); 
+                bestS = departmentStaffMax - Math.min(departmentStaffMax, maxDoubleAllowed); 
+                bestD = Math.min(departmentStaffMax, maxDoubleAllowed); 
             }
             return { standard: bestS, double: bestD, totalHours: (bestS * CONSTANTS.stdShift) + (bestD * CONSTANTS.dblShift) };
         }
@@ -168,8 +170,8 @@
             
             const fohLimit = parseInt(document.getElementById(`foh-limit-${day}`).value);
             const bohLimit = parseInt(document.getElementById(`boh-limit-${day}`).value);
-            const maxFohDbl = isNaN(fohLimit) ? CONSTANTS.maxStaff : fohLimit;
-            const maxBohDbl = isNaN(bohLimit) ? CONSTANTS.maxStaff : bohLimit;
+            const maxFohDbl = isNaN(fohLimit) ? CONSTANTS.maxFohStaff : fohLimit;
+            const maxBohDbl = isNaN(bohLimit) ? CONSTANTS.maxBohStaff : bohLimit;
 
             if (turnover < 1000) {
                 document.getElementById(`foh-slots-${day}`).textContent = "0";
@@ -184,10 +186,9 @@
                 const fohBudget = totalBudget * CONSTANTS.fohSplit;
                 const bohBudget = totalBudget * CONSTANTS.bohSplit;
 
-                const fohRoster = optimizeShifts(fohBudget / CONSTANTS.hourlyRate, maxFohDbl);
-                const bohRoster = optimizeShifts(bohBudget / CONSTANTS.hourlyRate, maxBohDbl);
+                const fohRoster = optimizeShifts(fohBudget / CONSTANTS.hourlyRate, maxFohDbl, CONSTANTS.maxFohStaff);
+                const bohRoster = optimizeShifts(bohBudget / CONSTANTS.hourlyRate, maxBohDbl, CONSTANTS.maxBohStaff);
 
-                // Calculate Total Shift Slots (Standard = 1 slot, Double = 2 slots)
                 const fohSlots = fohRoster.standard + (fohRoster.double * 2);
                 const bohSlots = bohRoster.standard + (bohRoster.double * 2);
 
