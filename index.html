@@ -5,17 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Weekly Roster Optimizer</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Replaced html2pdf with direct jsPDF document generators -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;Spur Roster&quot;,&quot;short_name&quot;:&quot;Roster&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;#050505&quot;,&quot;theme_color&quot;:&quot;#050505&quot;}">
     <style>
         body { background-color: #050505; color: #e5e5e5; }
         .input-glow:focus { box-shadow: 0 0 10px rgba(255, 210, 0, 0.2); border-color: #FFD200; outline: none; }
-        /* Print optimizations for the PDF */
-        .pdf-mode { background-color: #ffffff !important; color: #000000 !important; padding: 20px !important; }
-        .pdf-mode .bg-[#1a1a1a], .pdf-mode .bg-[#222] { background-color: #f3f4f6 !important; border-color: #d1d5db !important; color: #000 !important; }
-        .pdf-mode .text-white, .pdf-mode .text-emerald-400, .pdf-mode .text-[#FFD200] { color: #000000 !important; }
-        .pdf-mode input { background-color: transparent !important; border: none !important; color: #000 !important; font-weight: bold; }
-        .pdf-mode .limit-container { display: none !important; }
     </style>
 </head>
 <body class="p-4 md:p-8 font-sans antialiased min-h-screen flex flex-col items-center">
@@ -29,8 +25,8 @@
             </button>
         </div>
 
-        <!-- PDF Export Container -->
-        <div id="export-container" class="bg-[#111] border border-gray-800 rounded-xl shadow-2xl p-6">
+        <!-- App Container -->
+        <div class="bg-[#111] border border-gray-800 rounded-xl shadow-2xl p-6">
             
             <!-- Date Range -->
             <div class="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-gray-800">
@@ -94,10 +90,10 @@
                     <!-- FOH Output -->
                     <div class="col-span-4 md:border-l border-gray-800 pl-0 md:pl-4 flex flex-col justify-center text-sm">
                         <div class="flex justify-between items-center mb-1">
-                            <div class="limit-container text-[10px] text-gray-500 uppercase flex items-center gap-1">
+                            <div class="text-[10px] text-gray-500 uppercase flex items-center gap-1">
                                 11h Shifts: <input type="number" min="0" max="${CONSTANTS.maxFohStaff}" value="0" id="foh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
                             </div>
-                            <div id="foh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right">R0</div>
+                            <div id="foh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right hidden md:block">R0</div>
                         </div>
                         <div class="bg-[#222] rounded py-2 flex flex-col items-center justify-center border border-gray-800">
                             <div class="text-[#FFD200] font-bold text-xl leading-none" id="foh-staff-${day}" data-hours="0">0</div>
@@ -109,10 +105,10 @@
                     <!-- BOH Output -->
                     <div class="col-span-4 md:border-l border-gray-800 pl-0 md:pl-4 flex flex-col justify-center text-sm">
                         <div class="flex justify-between items-center mb-1">
-                            <div class="limit-container text-[10px] text-gray-500 uppercase flex items-center gap-1">
+                            <div class="text-[10px] text-gray-500 uppercase flex items-center gap-1">
                                 11h Shifts: <input type="number" min="0" max="${CONSTANTS.maxBohStaff}" value="0" id="boh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
                             </div>
-                            <div id="boh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right">R0</div>
+                            <div id="boh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right hidden md:block">R0</div>
                         </div>
                         <div class="bg-[#222] rounded py-2 flex flex-col items-center justify-center border border-gray-800">
                             <div class="text-[#FFD200] font-bold text-xl leading-none" id="boh-staff-${day}" data-hours="0">0</div>
@@ -125,7 +121,6 @@
             });
         }
 
-        // Updated explicitly configured exact double shift optimizer
         function optimizeShiftsExact(targetHours, exactDouble, departmentStaffMax) {
             let d = Math.min(Math.max(0, exactDouble), departmentStaffMax);
             let bestDiff = Infinity, bestS = 0;
@@ -135,21 +130,17 @@
                 let hours = (s * CONSTANTS.stdShift) + (d * CONSTANTS.dblShift);
                 let diff = hours - targetHours;
                 
-                // Bias toward tightest operational fulfillment without severely overloading budget
                 if (diff >= 0 && diff < bestDiff) { 
                     bestDiff = diff; 
                     bestS = s; 
                 }
             }
             
-            if (bestDiff === Infinity) { 
-                bestS = maxS; 
-            }
+            if (bestDiff === Infinity) { bestS = maxS; }
             
             return { standard: bestS, double: d, totalHours: (bestS * CONSTANTS.stdShift) + (d * CONSTANTS.dblShift) };
         }
 
-        // Calculates actual operational spend rather than theoretical percentages
         function calculateTotals() {
             let totalTurnover = 0;
             let actualHours = 0;
@@ -167,18 +158,13 @@
                 const actualSpend = actualHours * CONSTANTS.hourlyRate;
                 const ratio = ((actualSpend / totalTurnover) * 100).toFixed(2);
                 
-                // Visual compliance logic
                 const ratioColor = ratio > 10.00 ? 'text-red-500' : 'text-emerald-400';
                 
                 document.getElementById('weeklySummary').innerHTML = 
-                    `Total Turnover: <span class="text-white">R${totalTurnover.toFixed(2)}</span> &nbsp;|&nbsp; 
-                     Actual Wage Spend: <span class="text-white">R${actualSpend.toFixed(2)}</span> &nbsp;|&nbsp; 
-                     Actual Ratio: <span class="${ratioColor} font-bold">${ratio}%</span>`;
+                    `Total Turnover: <span class="text-white">R${totalTurnover.toFixed(2)}</span> &nbsp;|&nbsp; Actual Wage Spend: <span class="text-white">R${actualSpend.toFixed(2)}</span> &nbsp;|&nbsp; Actual Ratio: <span class="${ratioColor} font-bold">${ratio}%</span>`;
             } else {
                 document.getElementById('weeklySummary').innerHTML = 
-                    `Total Turnover: <span class="text-white">R0.00</span> &nbsp;|&nbsp; 
-                     Actual Wage Spend: <span class="text-white">R0.00</span> &nbsp;|&nbsp; 
-                     Actual Ratio: <span class="text-emerald-400">0.00%</span>`;
+                    `Total Turnover: <span class="text-white">R0.00</span> &nbsp;|&nbsp; Actual Wage Spend: <span class="text-white">R0.00</span> &nbsp;|&nbsp; Actual Ratio: <span class="text-emerald-400">0.00%</span>`;
             }
         }
 
@@ -231,24 +217,77 @@
             }
         });
 
+        // Completely rewritten Vector PDF Generator
         function downloadPDF() {
-            const element = document.getElementById('export-container');
-            const dateFrom = document.getElementById('dateFrom').value || 'Unknown';
-            const dateTo = document.getElementById('dateTo').value || 'Unknown';
-            
-            element.classList.add('pdf-mode');
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "A4" });
 
-            const opt = {
-                margin:       10,
-                filename:     `Spur_Roster_${dateFrom}_to_${dateTo}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
-            };
+            const dateFrom = document.getElementById('dateFrom').value || '____-___-__';
+            const dateTo = document.getElementById('dateTo').value || '____-___-__';
 
-            html2pdf().set(opt).from(element).save().then(() => {
-                element.classList.remove('pdf-mode');
+            // Document Headers
+            doc.setFontSize(20);
+            doc.setFont("helvetica", "bold");
+            doc.text("Sabino Canyon Spur", 40, 50);
+
+            doc.setFontSize(16);
+            doc.setFont("helvetica", "normal");
+            doc.text("SAB Shift Predictions", 40, 75);
+            doc.text(`${dateFrom} to ${dateTo}`, 40, 95);
+
+            // Extract Data from DOM
+            const tableData = [];
+            daysOfWeek.forEach(day => {
+                const turnover = document.getElementById(`turnover-${day}`).value || "0";
+                
+                // Format FOH Cell
+                const fohStaff = document.getElementById(`foh-staff-${day}`).textContent;
+                const fohBreakdown = document.getElementById(`foh-breakdown-${day}`).textContent.replace(/[()]/g, '');
+                const fohCell = `${fohStaff} Staff\n${fohBreakdown}`;
+
+                // Format BOH Cell
+                const bohStaff = document.getElementById(`boh-staff-${day}`).textContent;
+                const bohBreakdown = document.getElementById(`boh-breakdown-${day}`).textContent.replace(/[()]/g, '');
+                const bohCell = `${bohStaff} Staff\n${bohBreakdown}`;
+
+                tableData.push([ day, `R ${turnover}`, fohCell, bohCell ]);
             });
+
+            // Render Table Structure
+            doc.autoTable({
+                startY: 120,
+                head: [['Day', 'Projected Turnover', 'Front of House', 'Back of House']],
+                body: tableData,
+                theme: 'grid',
+                styles: { 
+                    fontSize: 14, 
+                    cellPadding: 10, 
+                    valign: 'middle',
+                    textColor: [0, 0, 0] 
+                },
+                headStyles: { 
+                    fillColor: [240, 240, 240], 
+                    textColor: [0, 0, 0], 
+                    fontStyle: 'bold' 
+                },
+                columnStyles: {
+                    0: { fontStyle: 'bold' },
+                    2: { halign: 'center' },
+                    3: { halign: 'center' }
+                }
+            });
+
+            // Extract & Clean Weekly Summary text for bottom of page
+            const summaryRaw = document.getElementById('weeklySummary').innerText;
+            const summaryClean = summaryRaw.replace(/\s+/g, ' ').trim();
+            
+            const finalY = doc.lastAutoTable.finalY || 120;
+            
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text(summaryClean, 40, finalY + 30);
+
+            doc.save(`Spur_Roster_${dateFrom}_to_${dateTo}.pdf`);
         }
 
         buildGrid();
