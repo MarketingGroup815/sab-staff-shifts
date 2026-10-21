@@ -93,7 +93,7 @@
                     <div class="col-span-4 md:border-l border-gray-800 pl-0 md:pl-4 flex flex-col justify-center text-sm">
                         <div class="flex justify-between items-center mb-1">
                             <div class="limit-container text-[10px] text-gray-500 uppercase flex items-center gap-1">
-                                Max 11h: <input type="number" min="0" max="${CONSTANTS.maxFohStaff}" value="${CONSTANTS.maxFohStaff}" id="foh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
+                                Max 11h: <input type="number" min="0" max="${CONSTANTS.maxFohStaff}" value="0" id="foh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
                             </div>
                             <div id="foh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right">R0</div>
                         </div>
@@ -108,7 +108,7 @@
                     <div class="col-span-4 md:border-l border-gray-800 pl-0 md:pl-4 flex flex-col justify-center text-sm">
                         <div class="flex justify-between items-center mb-1">
                             <div class="limit-container text-[10px] text-gray-500 uppercase flex items-center gap-1">
-                                Max 11h: <input type="number" min="0" max="${CONSTANTS.maxBohStaff}" value="${CONSTANTS.maxBohStaff}" id="boh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
+                                Max 11h: <input type="number" min="0" max="${CONSTANTS.maxBohStaff}" value="0" id="boh-limit-${day}" data-day="${day}" class="trigger-calc w-10 bg-[#222] border border-gray-700 rounded text-center text-white text-[10px] h-5">
                             </div>
                             <div id="boh-bgt-${day}" class="text-emerald-400 font-mono text-xs text-right">R0</div>
                         </div>
@@ -170,8 +170,8 @@
             
             const fohLimit = parseInt(document.getElementById(`foh-limit-${day}`).value);
             const bohLimit = parseInt(document.getElementById(`boh-limit-${day}`).value);
-            const maxFohDbl = isNaN(fohLimit) ? CONSTANTS.maxFohStaff : fohLimit;
-            const maxBohDbl = isNaN(bohLimit) ? CONSTANTS.maxBohStaff : bohLimit;
+            const maxFohDbl = isNaN(fohLimit) ? 0 : fohLimit; // Fallback matches default 0
+            const maxBohDbl = isNaN(bohLimit) ? 0 : bohLimit; // Fallback matches default 0
 
             if (turnover < 1000) {
                 document.getElementById(`foh-slots-${day}`).textContent = "0";
